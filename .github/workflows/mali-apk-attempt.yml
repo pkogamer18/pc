@@ -1,10 +1,6 @@
 name: Mali experimental APK build attempt
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'droiddeck-mali/**'
-      - '.github/workflows/mali-apk-attempt.yml'
 permissions:
   contents: read
   actions: read
@@ -39,6 +35,8 @@ jobs:
           set -euo pipefail
           git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
           python3 droiddeck-mali/patch_mali_icd.py upstream
+          bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          grep -q 'mali-lavapipe: selected' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           git -C upstream diff --check
       - uses: actions/download-artifact@v4
         with:
