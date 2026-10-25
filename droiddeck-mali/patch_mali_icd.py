@@ -10,7 +10,7 @@ OLD_ICD = '''        for (File manifest : manifests) {
         }
         return manifests.length > 0 ? manifests[0] : null;'''
 NEW_ICD = '''        // UMS9632 experiment: never select Qualcomm Freedreno for a Mali GPU.
-        if (android.os.Build.HARDWARE.toLowerCase(java.util.Locale.ROOT).contains("ums9632")) {
+        if ((android.os.Build.MODEL.equalsIgnoreCase("Z2464N") || android.os.Build.HARDWARE.toLowerCase(java.util.Locale.ROOT).contains("ums9632") || android.os.Build.SOC_MODEL.toLowerCase(java.util.Locale.ROOT).contains("ums9632"))) {
             for (File manifest : manifests) {
                 String name = manifest.getName().toLowerCase(java.util.Locale.ROOT);
                 if (name.startsWith("lvp_icd") || name.contains("lavapipe")) return manifest;
@@ -26,8 +26,9 @@ OLD_SESSION = '''        guest.add("MESA_LOADER_DRIVER_OVERRIDE=zink")
         guest.add("GALLIUM_DRIVER=zink")
         guest.add("LIBGL_KOPPER_DRI2=true")
         LinuxRuntime.vulkanIcd(this)?.let { guest.add("VK_ICD_FILENAMES=" + it.path) }'''
-NEW_SESSION = '''        val maliSoftwareMode = android.os.Build.HARDWARE
-            .lowercase(java.util.Locale.ROOT).contains("ums9632")
+NEW_SESSION = '''        val maliSoftwareMode = android.os.Build.MODEL.equals("Z2464N", ignoreCase = true) ||
+            android.os.Build.HARDWARE.contains("ums9632", ignoreCase = true) ||
+            android.os.Build.SOC_MODEL.contains("ums9632", ignoreCase = true)
         if (maliSoftwareMode) {
             guest.add("LIBGL_ALWAYS_SOFTWARE=1")
             guest.add("GALLIUM_DRIVER=llvmpipe")
