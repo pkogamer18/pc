@@ -26,6 +26,25 @@ class Tests(unittest.TestCase):
             f.write_text("different upstream")
             with self.assertRaises(RuntimeError):
                 patch.apply(f, patch.OLD_ICD, patch.NEW_ICD)
+    def test_arm64_soname_icd_is_accepted(self):
+        import json
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifests = root / "usr/share/vulkan/icd.d"
+            manifests.mkdir(parents=True)
+            (manifests / "lvp_icd.aarch64.json").write_text(json.dumps({
+                "ICD": {"library_path": "libvulkan_lvp.so"}}))
+            libdir = root / "usr/lib"
+            libdir.mkdir(parents=True)
+            header = bytearray(20)
+            header[:4] = b"\\x7fELF"
+            header[4] = 2
+            header[5] = 1
+            header[18:20] = (183).to_bytes(2, "little")
+            (libdir / "libvulkan_lvp.so").write_bytes(header)
+            manifest, library = check.inspect(root)
+            self.assertEqual(manifest.name, "lvp_icd.aarch64.json")
+            self.assertEqual(library.name, "libvulkan_lvp.so")
     def test_missing_lavapipe_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaises(RuntimeError):
