@@ -1,0 +1,38 @@
+name: Z2464N Android Vulkan probe (no APK)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'droiddeck-mali/android_vulkan_probe.c'
+      - '.github/workflows/mali-vulkan-probe.yml'
+permissions:
+  contents: read
+jobs:
+  build-probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find Android NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK="$(find "${ANDROID_HOME:-/opt/android-sdk}/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$NDK" ]; then
+            echo "No Android NDK found; installing via sdkmanager"
+            sdkmanager "ndk;27.2.12479018"
+            NDK="$ANDROID_HOME/ndk/27.2.12479018"
+          fi
+          echo "NDK=$NDK" >> "$GITHUB_ENV"
+      - name: Cross-compile native Vulkan probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang"
+          "$CC" -std=c11 -O2 -Wall -Wextra -Werror droiddeck-mali/android_vulkan_probe.c -o android-vulkan-probe -lvulkan
+          file android-vulkan-probe
+          test -s android-vulkan-probe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: z2464n-android-vulkan-probe-arm64
+          path: android-vulkan-probe
+          if-no-files-found: error
