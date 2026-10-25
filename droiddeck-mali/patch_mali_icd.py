@@ -27,7 +27,34 @@ GUEST_SESSION = "tools/linuxfs/overlay/usr/local/bin/droiddeck-session"
 OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'
 NEW_GUEST_HOOK = '''# Experimental Mali path: prepare/validate the Linux ARM64 software Vulkan ICD.
 if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
-  . /usr/local/bin/droiddeck-mali-lavapipe || exit 72
+  # Inline bootstrap: the downloaded r9 rootfs does not contain APK-only helper files.
+  bl_lvp_icd=
+  for bl_candidate in /usr/share/vulkan/icd.d/lvp_icd.aarch64.json /usr/share/vulkan/icd.d/lvp_icd.arm64.json /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/*lavapipe*.json; do
+    if [ -r "$bl_candidate" ]; then bl_lvp_icd="$bl_candidate"; break; fi
+  done
+  if [ -z "$bl_lvp_icd" ]; then
+    echo "== mali-lavapipe: ICD absent; trying vulkan-swrast via pacman"
+    if command -v pacman >/dev/null 2>&1; then
+      timeout 240 pacman -Sy --needed --noconfirm vulkan-swrast || echo "== mali-lavapipe: pacman failed"
+    fi
+    for bl_candidate in /usr/share/vulkan/icd.d/lvp_icd.aarch64.json /usr/share/vulkan/icd.d/lvp_icd.arm64.json /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/*lavapipe*.json; do
+      if [ -r "$bl_candidate" ]; then bl_lvp_icd="$bl_candidate"; break; fi
+    done
+  fi
+  if [ -z "$bl_lvp_icd" ]; then
+    echo "== mali-lavapipe: FATAL no ARM64 Lavapipe ICD installed"
+    exit 72
+  fi
+  bl_lvp_lib=$(sed -n 's/.*"library_path"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' "$bl_lvp_icd" | head -1)
+  case "$bl_lvp_lib" in /*) ;; ?*) bl_lvp_lib="$(dirname "$bl_lvp_icd")/$bl_lvp_lib" ;; esac
+  if [ -z "$bl_lvp_lib" ] || [ ! -r "$bl_lvp_lib" ]; then
+    echo "== mali-lavapipe: FATAL missing library $bl_lvp_lib"
+    exit 72
+  fi
+  export VK_ICD_FILENAMES="$bl_lvp_icd" VK_DRIVER_FILES="$bl_lvp_icd"
+  export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+  echo "== mali-lavapipe: selected $bl_lvp_icd ($bl_lvp_lib)"
+  unset bl_lvp_icd bl_lvp_lib bl_candidate
 fi
 export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'''
 OLD_WARNING = '''                        title = androidx.compose.ui.res.stringResource(R.string.main_non_adreno_title),
