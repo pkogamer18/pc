@@ -44,15 +44,28 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
     exit 72
   fi
   bl_lvp_lib=$(sed -n 's/.*"library_path"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' "$bl_lvp_icd" | head -1)
-  case "$bl_lvp_lib" in /*) ;; ?*) bl_lvp_lib="$(dirname "$bl_lvp_icd")/$bl_lvp_lib" ;; esac
-  if [ -z "$bl_lvp_lib" ] || [ ! -r "$bl_lvp_lib" ]; then
+  if [ -z "$bl_lvp_lib" ]; then
+    echo "== mali-lavapipe: FATAL ICD has no library_path"
+    exit 72
+  fi
+  case "$bl_lvp_lib" in
+    /*) bl_lvp_resolved="$bl_lvp_lib" ;;
+    */*) bl_lvp_resolved="$(dirname "$bl_lvp_icd")/$bl_lvp_lib" ;;
+    *)
+      bl_lvp_resolved=
+      for bl_dir in /usr/lib /usr/lib/aarch64-linux-gnu /lib /lib/aarch64-linux-gnu; do
+        if [ -r "$bl_dir/$bl_lvp_lib" ]; then bl_lvp_resolved="$bl_dir/$bl_lvp_lib"; break; fi
+      done
+      ;;
+  esac
+  if [ -z "$bl_lvp_resolved" ] || [ ! -r "$bl_lvp_resolved" ]; then
     echo "== mali-lavapipe: FATAL missing library $bl_lvp_lib"
     exit 72
   fi
   export VK_ICD_FILENAMES="$bl_lvp_icd" VK_DRIVER_FILES="$bl_lvp_icd"
   export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
-  echo "== mali-lavapipe: selected $bl_lvp_icd ($bl_lvp_lib)"
-  unset bl_lvp_icd bl_lvp_lib bl_candidate
+  echo "== mali-lavapipe: selected $bl_lvp_icd ($bl_lvp_resolved)"
+  unset bl_lvp_icd bl_lvp_lib bl_lvp_resolved bl_dir bl_candidate
 fi
 export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'''
 OLD_WARNING = '''                        title = androidx.compose.ui.res.stringResource(R.string.main_non_adreno_title),
