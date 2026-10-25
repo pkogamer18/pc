@@ -1,0 +1,33 @@
+name: Mali-G57 source patch checks
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'droiddeck-mali/**'
+      - '.github/workflows/mali-experiment.yml'
+  pull_request:
+    paths:
+      - 'droiddeck-mali/**'
+      - '.github/workflows/mali-experiment.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: python3 -m unittest discover -s droiddeck-mali -p 'test_*.py' -v
+      - name: Test patch against fresh upstream source
+        run: |
+          git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
+          python3 droiddeck-mali/patch_mali_icd.py upstream
+          git -C upstream diff --check
+          git -C upstream diff --stat
+      - name: Check whether Linux rootfs is packaged
+        run: |
+          if test -d upstream/app/src/main/assets/linuxfs; then
+            python3 droiddeck-mali/check_lavapipe.py upstream/app/src/main/assets/linuxfs || true
+          else
+            echo "Rootfs not present in source checkout: Lavapipe is NOT validated."
+          fi
