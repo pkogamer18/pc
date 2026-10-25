@@ -22,6 +22,16 @@ NEW_ICD = '''        // UMS9632 experiment: never select Qualcomm Freedreno for 
             if (manifest.getName().contains("freedreno")) return manifest;
         }
         return manifests.length > 0 ? manifests[0] : null;'''
+FRONTEND = "app/src/main/java/com/droiddeck/launcher/FrontEndActivity.kt"
+OLD_WARNING = '''                        title = androidx.compose.ui.res.stringResource(R.string.main_non_adreno_title),
+                        text = androidx.compose.ui.res.stringResource(R.string.main_non_adreno_text, com.droiddeck.launcher.core.DeviceSupport.gpuName(this@FrontEndActivity), release.size / 1e6),'''
+NEW_WARNING = '''                        title = if (android.os.Build.MODEL.equals("Z2464N", ignoreCase = true))
+                            "Mali-G57: Vulkan experimental"
+                        else androidx.compose.ui.res.stringResource(R.string.main_non_adreno_title),
+                        text = if (android.os.Build.MODEL.equals("Z2464N", ignoreCase = true))
+                            "Este dispositivo usa Mali-G57, no Adreno. Turnip no es compatible. La selección experimental de Lavapipe requiere un ICD Linux ARM64 real, que todavía no está incluido en esta compilación. Instalar el runtime (%.0f MB) no garantiza que Steam o Gamescope funcionen.".format(java.util.Locale.ROOT, release.size / 1e6)
+                        else androidx.compose.ui.res.stringResource(R.string.main_non_adreno_text, com.droiddeck.launcher.core.DeviceSupport.gpuName(this@FrontEndActivity), release.size / 1e6),'''
+
 OLD_SESSION = '''        guest.add("MESA_LOADER_DRIVER_OVERRIDE=zink")
         guest.add("GALLIUM_DRIVER=zink")
         guest.add("LIBGL_KOPPER_DRI2=true")
@@ -57,7 +67,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("upstream", type=Path)
     root = ap.parse_args().upstream
-    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION)]
+    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (FRONTEND, OLD_WARNING, NEW_WARNING)]
     for name, old, new in pairs:
         src = (root / name).read_text()
         if new not in src and src.count(old) != 1:
