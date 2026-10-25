@@ -33,6 +33,12 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/proot/build.sh app/src/main/jniLibs/arm64-v8a
+      - name: Prepare DirectAudio release assets
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets/linuxfs/usr/local/lib
+          bash tools/directaudio/fetch.sh "$PWD" "$PWD/app/src/main/assets/linuxfs/usr/local/lib"
       - name: Build required add-on packs
         working-directory: upstream
         run: |
