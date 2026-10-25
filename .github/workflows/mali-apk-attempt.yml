@@ -1,73 +1,89 @@
 name: Mali experimental APK build attempt
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'droiddeck-mali/**'
       - '.github/workflows/mali-apk-attempt.yml'
-  workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
+  xbox:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get upstream
+        run: git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
+      - name: Build Xbox ARM64
+        working-directory: upstream
+        run: python3 tools/components/prepare.py xbox
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mali-xbox-arm64
+          path: upstream/app/src/main/assets/linuxfs/usr/local/lib/droiddeck-xbox
+          if-no-files-found: error
   build:
+    needs: xbox
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Clone upstream and apply Mali patch
+      - name: Clone and patch upstream
         run: |
+          set -euo pipefail
           git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
           python3 droiddeck-mali/patch_mali_icd.py upstream
           git -C upstream diff --check
-      - name: Prepare SDK/NDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
-          bash upstream/tools/ci/resolve-ndk.sh || true
-      - name: Compile Android ARM64 proot binaries
+      - uses: actions/download-artifact@v4
+        with:
+          name: mali-xbox-arm64
+          path: upstream/app/src/main/assets/linuxfs/usr/local/lib/droiddeck-xbox
+      - name: Prepare Android toolchain
         working-directory: upstream
-        env:
-          NDK: ${{ env.ANDROID_NDK_HOME }}
-        run: |
-          set -euo pipefail
-          bash tools/proot/build.sh app/src/main/jniLibs/arm64-v8a
-      - name: Prepare DirectAudio release assets
+        run: bash tools/ci/resolve-ndk.sh
+      - name: Prepare all upstream components in dependency order
         working-directory: upstream
         run: |
           set -euo pipefail
-          mkdir -p app/src/main/assets/linuxfs/usr/local/lib
-          bash tools/directaudio/fetch.sh "$PWD" "$PWD/app/src/main/assets/linuxfs/usr/local/lib"
-      - name: Build required add-on packs
+          python3 tools/components/prepare.py tools
+          python3 tools/components/prepare.py arm64-preloads
+          python3 tools/components/prepare.py runtime
+          python3 tools/components/prepare.py debian-image
+          python3 tools/components/prepare.py x86-preloads
+          python3 tools/components/prepare.py esync
+          python3 tools/components/prepare.py pulseaudio-source
+          python3 tools/components/prepare.py directaudio
+          python3 tools/components/prepare.py audio
+          python3 tools/components/prepare.py proot
+          python3 tools/components/prepare.py comet
+          bash tools/linuxfs/check-preloads.sh app/src/main/assets/linuxfs
+          python3 tools/quest/build-driver.py "$ANDROID_HOME/ndk/$NDK_VERSION"
+          python3 tools/components/prepare.py pack
+      - name: Build verified add-on packs
         working-directory: upstream
         run: |
           set -euo pipefail
-          if ! command -v zstd >/dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y zstd
-          fi
+          command -v zstd || sudo apt-get install -y zstd
           bash tools/packs/build.sh app/build/packs
-      - name: Attempt debug APK compilation
-        id: build
-        continue-on-error: true
+      - name: Build experimental APK
         working-directory: upstream
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --console=plain --stacktrace 2>&1 | tee ../mali-build.log
-          test -f app/build/outputs/apk/debug/app-debug.apk
-      - name: Upload build log and APK if available
+          set -euo pipefail
+          ./gradlew assembleDebug --console=plain -PndkVersion="$NDK_VERSION"
+          test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload diagnostics and APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mali-build-diagnostics
+          name: mali-build-output
           path: |
-            mali-build.log
             upstream/app/build/outputs/apk/debug/*.apk
+            upstream/app/build/reports/**
           if-no-files-found: warn
           retention-days: 14
-      - name: Fail if no APK was built
-        if: steps.build.outcome != 'success'
-        run: |
-          echo "APK NOT BUILT. Full upstream native assets and runtime preparation are required."
-          exit 1
