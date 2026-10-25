@@ -54,7 +54,7 @@ jobs:
           python3 tools/components/prepare.py tools
           python3 tools/components/prepare.py arm64-preloads
           python3 tools/components/prepare.py runtime
-          python3 tools/components/prepare.py debian-image
+          GITHUB_REPOSITORY=Droid-Deck/DroidDeck GH_TOKEN="${{ github.token }}" python3 tools/components/prepare.py debian-image
           python3 tools/components/prepare.py x86-preloads
           python3 tools/components/prepare.py esync
           python3 tools/components/prepare.py pulseaudio-source
