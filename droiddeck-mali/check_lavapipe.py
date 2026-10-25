@@ -16,7 +16,14 @@ def inspect(root):
         if not name:
             continue
         library = Path(name)
-        library = root / library.relative_to("/") if library.is_absolute() else manifest.parent / library
+        if library.is_absolute():
+            candidates = [root / library.relative_to("/")]
+        elif "/" in name:
+            candidates = [manifest.parent / library]
+        else:
+            candidates = [root / "usr/lib" / name, root / "usr/lib64" / name,
+                          root / "lib" / name, manifest.parent / name]
+        library = next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
         if not library.is_file():
             continue
         header = library.read_bytes()[:20]
