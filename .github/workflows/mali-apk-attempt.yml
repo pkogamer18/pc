@@ -26,6 +26,15 @@ jobs:
         run: |
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
           bash upstream/tools/ci/resolve-ndk.sh || true
+      - name: Build required add-on packs
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y zstd
+          fi
+          bash tools/packs/build.sh app/build/packs
       - name: Attempt debug APK compilation
         id: build
         continue-on-error: true
