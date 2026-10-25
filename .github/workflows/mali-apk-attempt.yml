@@ -71,6 +71,16 @@ jobs:
           set -euo pipefail
           command -v zstd || sudo apt-get install -y zstd
           bash tools/packs/build.sh app/build/packs
+      - name: Record verified runtime inputs
+        working-directory: upstream
+        run: python3 tools/release/runtime_inputs.py record
+      - name: Install Android Rust cross-compilation support
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          rustup target add aarch64-linux-android
+          command -v cargo-ndk >/dev/null || cargo install cargo-ndk --locked
+          cargo ndk --version
       - name: Build experimental APK
         working-directory: upstream
         run: |
