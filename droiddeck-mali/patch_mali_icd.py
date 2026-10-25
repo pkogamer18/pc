@@ -34,9 +34,7 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   done
   if [ -z "$bl_lvp_icd" ]; then
     echo "== mali-lavapipe: ICD absent; trying vulkan-swrast via pacman"
-    if command -v pacman >/dev/null 2>&1; then
-      timeout 240 pacman -Sy --needed --noconfirm vulkan-swrast || echo "== mali-lavapipe: pacman failed"
-    fi
+    echo "== mali-lavapipe: rootless runtime; ICD must be installed offline, not with pacman"
     for bl_candidate in /usr/share/vulkan/icd.d/lvp_icd.aarch64.json /usr/share/vulkan/icd.d/lvp_icd.arm64.json /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/*lavapipe*.json; do
       if [ -r "$bl_candidate" ]; then bl_lvp_icd="$bl_candidate"; break; fi
     done
