@@ -23,6 +23,13 @@ NEW_ICD = '''        // UMS9632 experiment: never select Qualcomm Freedreno for 
         }
         return manifests.length > 0 ? manifests[0] : null;'''
 FRONTEND = "app/src/main/java/com/droiddeck/launcher/FrontEndActivity.kt"
+GUEST_SESSION = "tools/linuxfs/overlay/usr/local/bin/droiddeck-session"
+OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'
+NEW_GUEST_HOOK = '''# Experimental Mali path: prepare/validate the Linux ARM64 software Vulkan ICD.
+if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
+  . /usr/local/bin/droiddeck-mali-lavapipe || exit 72
+fi
+export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'''
 OLD_WARNING = '''                        title = androidx.compose.ui.res.stringResource(R.string.main_non_adreno_title),
                         text = androidx.compose.ui.res.stringResource(R.string.main_non_adreno_text, com.droiddeck.launcher.core.DeviceSupport.gpuName(this@FrontEndActivity), release.size / 1e6),'''
 NEW_WARNING = '''                        title = if (android.os.Build.MODEL.equals("Z2464N", ignoreCase = true))
@@ -40,7 +47,7 @@ NEW_SESSION = '''        val maliSoftwareMode = android.os.Build.MODEL.equals("Z
             android.os.Build.HARDWARE.contains("ums9632", ignoreCase = true) ||
             android.os.Build.SOC_MODEL.contains("ums9632", ignoreCase = true)
         if (maliSoftwareMode) {
-            guest.add("LIBGL_ALWAYS_SOFTWARE=1")
+            guest.add("DROIDDECK_MALI_LVP=1")\n            guest.add("LIBGL_ALWAYS_SOFTWARE=1")
             guest.add("GALLIUM_DRIVER=llvmpipe")
             val softwareIcd = LinuxRuntime.vulkanIcd(this)
             if (softwareIcd != null) {
@@ -67,7 +74,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("upstream", type=Path)
     root = ap.parse_args().upstream
-    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (FRONTEND, OLD_WARNING, NEW_WARNING)]
+    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK)]
     for name, old, new in pairs:
         src = (root / name).read_text()
         if new not in src and src.count(old) != 1:
