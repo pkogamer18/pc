@@ -1,0 +1,51 @@
+name: Mali experimental APK build attempt
+on:
+  push:
+    paths:
+      - 'droiddeck-mali/**'
+      - '.github/workflows/mali-apk-attempt.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Clone upstream and apply Mali patch
+        run: |
+          git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
+          python3 droiddeck-mali/patch_mali_icd.py upstream
+          git -C upstream diff --check
+      - name: Prepare SDK/NDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          bash upstream/tools/ci/resolve-ndk.sh || true
+      - name: Attempt debug APK compilation
+        id: build
+        continue-on-error: true
+        working-directory: upstream
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --console=plain --stacktrace 2>&1 | tee ../mali-build.log
+          test -f app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload build log and APK if available
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mali-build-diagnostics
+          path: |
+            mali-build.log
+            upstream/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Fail if no APK was built
+        if: steps.build.outcome != 'success'
+        run: |
+          echo "APK NOT BUILT. Full upstream native assets and runtime preparation are required."
+          exit 1
