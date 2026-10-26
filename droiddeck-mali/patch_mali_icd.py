@@ -211,7 +211,7 @@ NEW_WARNING = '''                        title = if (android.os.Build.MODEL.equa
                             "Mali-G57: Vulkan experimental"
                         else androidx.compose.ui.res.stringResource(R.string.main_non_adreno_title),
                         text = if (android.os.Build.MODEL.equals("Z2464N", ignoreCase = true))
-                            "Este dispositivo usa Mali-G57, no Adreno. Turnip no es compatible. La selección experimental de Lavapipe requiere un ICD Linux ARM64 real, que todavía no está incluido en esta compilación. Instalar el runtime (%.0f MB) no garantiza que Steam o Gamescope funcionen.".format(java.util.Locale.ROOT, release.size / 1e6)
+                            "Este dispositivo usa Mali-G57, no Adreno. Turnip no es compatible. Esta compilación incluye una ruta experimental de Vulkan por software (Lavapipe) para Mali-G57. No equivale a aceleración gráfica Mali y puede fallar al iniciar Steam o juegos. El runtime de Linux (%.0f MB) no cambia la compatibilidad de la GPU.".format(java.util.Locale.ROOT, release.size / 1e6)
                         else androidx.compose.ui.res.stringResource(R.string.main_non_adreno_text, com.droiddeck.launcher.core.DeviceSupport.gpuName(this@FrontEndActivity), release.size / 1e6),'''
 
 OLD_SESSION = '''        guest.add("MESA_LOADER_DRIVER_OVERRIDE=zink")
