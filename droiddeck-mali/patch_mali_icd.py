@@ -44,6 +44,35 @@ NEW_HOST_COMPOSITOR = '''        // Z2464N has a working Android vendor Vulkan I
             if (maliHost) null else libraryName,
             nativeLibDir,
         )'''
+BOOTSTRAP_ANCHOR = '''        val root = LinuxRuntime.rootDir(this)
+        val sessionRoot = LinuxRuntime.sessionRoot(this).apply { mkdirs() }'''
+BOOTSTRAP_REPLACEMENT = '''        val root = LinuxRuntime.rootDir(this)
+        // r9 is downloaded independently of the APK. Update its session script in-place
+        // before proot launches; patching tools/linuxfs/overlay alone does not update r9.
+        val maliGuest = Build.MODEL.equals("Z2464N", ignoreCase = true) ||
+            Build.HARDWARE.contains("ums9632", ignoreCase = true) ||
+            Build.SOC_MODEL.contains("ums9632", ignoreCase = true)
+        if (maliGuest) {
+            try {
+                val script = File(root, "usr/local/bin/droiddeck-session")
+                require(script.isFile) { "r9 session script missing: ${script.path}" }
+                val staging = File(script.parentFile, ".droiddeck-session-mali-new")
+                assets.open("mali/droiddeck-session").use { input ->
+                    staging.outputStream().use { output -> input.copyTo(output) }
+                }
+                require(staging.setExecutable(true, false)) { "cannot mark Mali guest script executable" }
+                if (!staging.renameTo(script)) {
+                    staging.delete()
+                    error("cannot replace r9 guest session script")
+                }
+                Log.i(TAG, "Mali guest: updated r9 session script from APK asset")
+            } catch (e: Exception) {
+                Log.e(TAG, "Mali guest: failed to update r9 session script", e)
+                stopSession(72)
+                return
+            }
+        }
+        val sessionRoot = LinuxRuntime.sessionRoot(this).apply { mkdirs() }'''
 FRONTEND = "app/src/main/java/com/droiddeck/launcher/FrontEndActivity.kt"
 GUEST_SESSION = "tools/linuxfs/overlay/usr/local/bin/droiddeck-session"
 OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'
@@ -135,7 +164,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("upstream", type=Path)
     root = ap.parse_args().upstream
-    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK), (HOST_COMPOSITOR, OLD_HOST_COMPOSITOR, NEW_HOST_COMPOSITOR)]
+    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (SESSION, BOOTSTRAP_ANCHOR, BOOTSTRAP_REPLACEMENT), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK), (HOST_COMPOSITOR, OLD_HOST_COMPOSITOR, NEW_HOST_COMPOSITOR)]
     for name, old, new in pairs:
         src = (root / name).read_text()
         if new not in src and src.count(old) != 1:
