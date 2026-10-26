@@ -7,7 +7,7 @@ trap 'sudo umount -lf "$work/root/dev" 2>/dev/null || :; sudo umount -lf "$work/
 mirror="https://ca.us.mirror.archlinuxarm.org/os"
 curl -fL --retry 3 "$mirror/ArchLinuxARM-aarch64-latest.tar.gz" -o "$work/arch.tar.gz"
 curl -fL --retry 3 "$mirror/ArchLinuxARM-aarch64-latest.tar.gz.md5" -o "$work/arch.tar.gz.md5"
-(cd "$work" && md5sum -c arch.tar.gz.md5)
+(cd "$work" && sed "s|ArchLinuxARM-aarch64-latest.tar.gz|arch.tar.gz|g" arch.tar.gz.md5 | md5sum -c -)
 mkdir -p "$work/root"
 sudo tar -xzf "$work/arch.tar.gz" -C "$work/root"
 sudo cp /etc/resolv.conf "$work/root/etc/resolv.conf"
