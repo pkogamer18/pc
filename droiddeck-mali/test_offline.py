@@ -12,7 +12,10 @@ ast.parse(patch.read_text())
 sys.path.insert(0, str(root))
 import patch_mali_icd as p
 
-assert "pacman -Sy" not in p.NEW_GUEST_HOOK, "Never mutate rootless runtime with pacman"
+assert "pacman -Sy" not in p.NEW_GUEST_HOOK, "Never run pacman as ordinary guest user"
+assert "prootPrefix" not in p.BOOTSTRAP_REPLACEMENT, "Do not reintroduce untested fake-root bootstrap"
+assert "assets.open(\"mali/droiddeck-session\")" in p.BOOTSTRAP_REPLACEMENT
+assert "guest-patch=v2" in p.NEW_GUEST_HOOK
 assert "DROIDDECK_MALI_LVP" in p.NEW_SESSION
 assert "VK_ICD_FILENAMES" in p.NEW_SESSION
 assert "Turnip no es compatible" in p.NEW_WARNING
