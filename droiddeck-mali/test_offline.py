@@ -18,6 +18,9 @@ assert "VK_ICD_FILENAMES" in p.NEW_SESSION
 assert "Turnip no es compatible" in p.NEW_WARNING
 assert "lvp_icd" in p.NEW_ICD
 assert "exit 72" in p.NEW_GUEST_HOOK
+assert "if (maliHost) null else driverPath" in p.NEW_HOST_COMPOSITOR
+assert "if (maliHost) null else libraryName" in p.NEW_HOST_COMPOSITOR
+assert "TpUbwcHint.applyToProcess(context)" in p.NEW_HOST_COMPOSITOR
 
 with tempfile.TemporaryDirectory() as d:
     shell = Path(d) / "session.sh"
