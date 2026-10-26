@@ -8,10 +8,25 @@ on:
       - '.github/workflows/mali-apk-attempt.yml'
       - 'droiddeck-mali/patch_mali_icd.py'
       - 'droiddeck-mali/test_offline.py'
+      - 'droiddeck-mali/build_lavapipe_arm64.sh'
 permissions:
   contents: read
   actions: read
 jobs:
+  lavapipe:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Arch Linux ARM64 Lavapipe bundle
+        run: |
+          mkdir -p output
+          bash droiddeck-mali/build_lavapipe_arm64.sh "$PWD/output/lavapipe-arm64.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mali-lavapipe-arm64
+          path: output/lavapipe-arm64.tar
+          if-no-files-found: error
   xbox:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
@@ -28,7 +43,7 @@ jobs:
           path: upstream/app/src/main/assets/linuxfs/usr/local/lib/droiddeck-xbox
           if-no-files-found: error
   build:
-    needs: xbox
+    needs: [xbox, lavapipe]
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -59,6 +74,14 @@ jobs:
         with:
           name: mali-xbox-arm64
           path: upstream/app/src/main/assets/linuxfs/usr/local/lib/droiddeck-xbox
+      - uses: actions/download-artifact@v4
+        with:
+          name: mali-lavapipe-arm64
+          path: upstream/app/src/main/assets/mali
+      - name: Verify bundled ARM64 Lavapipe
+        run: |
+          test -s upstream/app/src/main/assets/mali/lavapipe-arm64.tar
+          tar -tf upstream/app/src/main/assets/mali/lavapipe-arm64.tar | grep -q 'lvp_icd.*json'
       - name: Prepare Android toolchain
         working-directory: upstream
         run: bash tools/ci/resolve-ndk.sh
