@@ -21,7 +21,7 @@ fi
 # The rootfs default mirror hostname may not resolve; use the same HTTPS mirror
 # that successfully supplied the verified ARM64 bootstrap.
 sudo mkdir -p "$work/root/etc/pacman.d"
-printf 'Server = https://ca.us.mirror.archlinuxarm.org/$repo/os/$arch\n' | sudo tee "$work/root/etc/pacman.d/mirrorlist" >/dev/null
+printf 'Server = https://ca.us.mirror.archlinuxarm.org/$arch/$repo\n' | sudo tee "$work/root/etc/pacman.d/mirrorlist" >/dev/null
 echo 'Chroot DNS:'
 sudo cat "$work/root/etc/resolv.conf"
 echo 'Arch mirror:'
