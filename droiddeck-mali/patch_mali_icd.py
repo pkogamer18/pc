@@ -22,6 +22,28 @@ NEW_ICD = '''        // UMS9632 experiment: never select Qualcomm Freedreno for 
             if (manifest.getName().contains("freedreno")) return manifest;
         }
         return manifests.length > 0 ? manifests[0] : null;'''
+HOST_COMPOSITOR = "app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt"
+OLD_HOST_COMPOSITOR = '''        com.droiddeck.launcher.gpu.TpUbwcHint.applyToProcess(context)
+        WaylandCompositor.nativeStartWithSurface(
+            surface, xdgRuntimeDir, driverPath, libraryName, nativeLibDir,
+        )'''
+NEW_HOST_COMPOSITOR = '''        // Z2464N has a working Android vendor Vulkan ICD, not a Turnip/Adreno ICD.
+        // Passing null selects the Android system Vulkan loader in vk_loader_open.
+        // This affects host presentation only; guest Linux Vulkan is separate.
+        val maliHost = android.os.Build.MODEL.equals("Z2464N", ignoreCase = true) ||
+            android.os.Build.HARDWARE.contains("ums9632", ignoreCase = true) ||
+            android.os.Build.SOC_MODEL.contains("ums9632", ignoreCase = true)
+        if (maliHost) {
+            android.util.Log.i("CompositorHost", "Mali host: Android system Vulkan loader, no Turnip/UBWC")
+        } else {
+            com.droiddeck.launcher.gpu.TpUbwcHint.applyToProcess(context)
+        }
+        WaylandCompositor.nativeStartWithSurface(
+            surface, xdgRuntimeDir,
+            if (maliHost) null else driverPath,
+            if (maliHost) null else libraryName,
+            nativeLibDir,
+        )'''
 FRONTEND = "app/src/main/java/com/droiddeck/launcher/FrontEndActivity.kt"
 GUEST_SESSION = "tools/linuxfs/overlay/usr/local/bin/droiddeck-session"
 OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'
@@ -112,7 +134,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("upstream", type=Path)
     root = ap.parse_args().upstream
-    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK)]
+    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK), (HOST_COMPOSITOR, OLD_HOST_COMPOSITOR, NEW_HOST_COMPOSITOR)]
     for name, old, new in pairs:
         src = (root / name).read_text()
         if new not in src and src.count(old) != 1:
