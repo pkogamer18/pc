@@ -15,7 +15,9 @@ import patch_mali_icd as p
 assert "pacman -Sy" not in p.NEW_GUEST_HOOK, "Never run pacman as ordinary guest user"
 assert "prootPrefix" not in p.BOOTSTRAP_REPLACEMENT, "Do not reintroduce untested fake-root bootstrap"
 assert "assets.open(\"mali/droiddeck-session\")" in p.BOOTSTRAP_REPLACEMENT
-assert "guest-patch=v2" in p.NEW_GUEST_HOOK
+assert "guest-patch=v3" in p.NEW_GUEST_HOOK
+assert "mali-device:" in p.NEW_GUEST_HOOK
+assert "mali-fex:" in p.NEW_GUEST_HOOK
 assert 'if [ "$mode" = steam ]' in p.NEW_GUEST_HOOK, "Steam fallback must inspect mode, not shifted positional arguments"
 assert "mode=lxqt" in p.NEW_GUEST_HOOK, "Mali must bypass the Gamescope entry point"
 assert 'if [ "${1:-}" = steam ]' not in p.NEW_GUEST_HOOK
