@@ -1,6 +1,9 @@
 name: Mali experimental APK build attempt
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/mali-apk-attempt.yml']
 permissions:
   contents: read
   actions: read
