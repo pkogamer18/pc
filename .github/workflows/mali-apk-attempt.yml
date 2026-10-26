@@ -3,7 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/mali-apk-attempt.yml']
+    paths:
+      - '.github/workflows/mali-apk-attempt.yml'
+      - 'droiddeck-mali/**'
 permissions:
   contents: read
   actions: read
@@ -62,6 +64,7 @@ jobs:
           cmp upstream/app/src/main/assets/mali/droiddeck-session upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           grep -q 'mali-lavapipe: selected' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          grep -q 'bypassing crashing Gamescope' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           grep -q 'Mali host: Android system Vulkan loader' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
           grep -q 'if (maliHost) null else driverPath' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
           grep -q 'DROIDDECK_MALI_LVP=1' upstream/app/src/main/java/com/droiddeck/launcher/session/SessionService.kt
