@@ -73,6 +73,39 @@ BOOTSTRAP_REPLACEMENT = '''        val root = LinuxRuntime.rootDir(this)
             }
         }
         val sessionRoot = LinuxRuntime.sessionRoot(this).apply { mkdirs() }'''
+MALI_INSTALL_ANCHOR = '''        val agentEnvironment = runCatching { com.droiddeck.launcher.agent.AgentEnv.beginSession(this) }'''
+MALI_INSTALL_REPLACEMENT = '''        // UMS9632: provision Arch Linux ARM software Vulkan as fake root, never Android root.
+        // This runs only if the ICD is missing, after the PRoot pack becomes available.
+        if (maliGuest && AddonPack.PROOT.installed(this)) {
+            val icdDir = File(root, "usr/share/vulkan/icd.d")
+            val hasIcd = icdDir.listFiles()?.any {
+                it.name.endsWith(".json") && (it.name.startsWith("lvp_icd") || it.name.contains("lavapipe"))
+            } == true
+            if (!hasIcd) {
+                val installLog = File(filesDir, "logs/mali-lavapipe-install.log")
+                installLog.parentFile?.mkdirs()
+                try {
+                    val command = LinuxRuntime.prootPrefix(this, root, "/root", true).toMutableList()
+                    command.addAll(listOf(
+                        "-b", "/dev", "-b", "/proc", "-b", "/sys",
+                        "/bin/sh", "-c",
+                        "pacman -Sy --noconfirm --needed vulkan-swrast"
+                    ))
+                    val builder = ProcessBuilder(command)
+                        .redirectErrorStream(true).redirectOutput(installLog)
+                    builder.environment()["PROOT_LOADER"] = LinuxRuntime.prootLoader(this).absolutePath
+                    builder.environment()["PROOT_TMP_DIR"] = LinuxRuntime.prootTempDir(this).absolutePath
+                    val process = builder.start()
+                    val completed = process.waitFor(180, java.util.concurrent.TimeUnit.SECONDS)
+                    if (!completed) process.destroyForcibly()
+                    Log.i(TAG, "Mali Lavapipe provision completed=" + completed +
+                        " exit=" + (if (completed) process.exitValue() else "timeout"))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Mali Lavapipe provision failed; inspect mali-lavapipe-install.log", e)
+                }
+            }
+        }
+        val agentEnvironment = runCatching { com.droiddeck.launcher.agent.AgentEnv.beginSession(this) }'''
 FRONTEND = "app/src/main/java/com/droiddeck/launcher/FrontEndActivity.kt"
 GUEST_SESSION = "tools/linuxfs/overlay/usr/local/bin/droiddeck-session"
 OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'
@@ -164,7 +197,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("upstream", type=Path)
     root = ap.parse_args().upstream
-    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (SESSION, BOOTSTRAP_ANCHOR, BOOTSTRAP_REPLACEMENT), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK), (HOST_COMPOSITOR, OLD_HOST_COMPOSITOR, NEW_HOST_COMPOSITOR)]
+    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (SESSION, BOOTSTRAP_ANCHOR, BOOTSTRAP_REPLACEMENT), (SESSION, MALI_INSTALL_ANCHOR, MALI_INSTALL_REPLACEMENT), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK), (HOST_COMPOSITOR, OLD_HOST_COMPOSITOR, NEW_HOST_COMPOSITOR)]
     for name, old, new in pairs:
         src = (root / name).read_text()
         if new not in src and src.count(old) != 1:
