@@ -26,3 +26,4 @@ jobs:
           git -C upstream diff --check
           grep -q 'Mali host: Android system Vulkan loader' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
           grep -q 'mali-lavapipe: FATAL no ARM64 Lavapipe ICD installed' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          grep -q 'droiddeck-mali: guest-patch=v2' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
