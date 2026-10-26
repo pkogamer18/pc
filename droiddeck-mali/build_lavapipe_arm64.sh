@@ -10,7 +10,21 @@ curl -fL --retry 3 "$mirror/ArchLinuxARM-aarch64-latest.tar.gz.md5" -o "$work/ar
 (cd "$work" && sed "s|ArchLinuxARM-aarch64-latest.tar.gz|arch.tar.gz|g" arch.tar.gz.md5 | md5sum -c -)
 mkdir -p "$work/root"
 sudo tar -xzf "$work/arch.tar.gz" -C "$work/root"
-sudo cp /etc/resolv.conf "$work/root/etc/resolv.conf"
+# GitHub Ubuntu uses a systemd-resolved loopback stub that is not available in chroot.
+# Use the runner's real upstream resolver configuration, not 127.0.0.53.
+if [ -s /run/systemd/resolve/resolv.conf ]; then
+  sudo cp /run/systemd/resolve/resolv.conf "$work/root/etc/resolv.conf"
+else
+  sudo cp /etc/resolv.conf "$work/root/etc/resolv.conf"
+fi
+# The rootfs default mirror hostname may not resolve; use the same HTTPS mirror
+# that successfully supplied the verified ARM64 bootstrap.
+sudo mkdir -p "$work/root/etc/pacman.d"
+printf 'Server = https://ca.us.mirror.archlinuxarm.org/$repo/os/$arch\n' | sudo tee "$work/root/etc/pacman.d/mirrorlist" >/dev/null
+echo 'Chroot DNS:'
+sudo cat "$work/root/etc/resolv.conf"
+echo 'Arch mirror:'
+sudo cat "$work/root/etc/pacman.d/mirrorlist"
 for d in dev proc sys; do sudo mount --bind "/$d" "$work/root/$d"; done
 # Use the package manager inside an actual Arch Linux ARM environment.
 sudo chroot "$work/root" /bin/bash -lc 'pacman-key --init && pacman-key --populate archlinuxarm && pacman -Syu --noconfirm --needed vulkan-swrast vulkan-tools'
