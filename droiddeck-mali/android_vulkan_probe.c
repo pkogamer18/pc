@@ -111,6 +111,48 @@ int main(void) {
                 VkQueue queue = VK_NULL_HANDLE;
                 vkGetDeviceQueue(device, (uint32_t)graphics_family, 0, &queue);
                 printf("gpu[%u].graphics_queue_available=%s\n", i, queue != VK_NULL_HANDLE ? "yes" : "no");
+                /* Submit a real (empty) Vulkan command buffer to verify that
+                 * the Android driver accepts GPU queue work, not just device creation. */
+                VkCommandPoolCreateInfo pci = {
+                    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                    .queueFamilyIndex = (uint32_t)graphics_family
+                };
+                VkCommandPool pool = VK_NULL_HANDLE;
+                VkResult pr = vkCreateCommandPool(device, &pci, NULL, &pool);
+                printf("gpu[%u].vkCreateCommandPool=%d\n", i, pr);
+                if (pr == VK_SUCCESS) {
+                    VkCommandBufferAllocateInfo ai = {
+                        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                        .commandPool = pool,
+                        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                        .commandBufferCount = 1
+                    };
+                    VkCommandBuffer cb = VK_NULL_HANDLE;
+                    VkResult ar = vkAllocateCommandBuffers(device, &ai, &cb);
+                    printf("gpu[%u].vkAllocateCommandBuffers=%d\n", i, ar);
+                    if (ar == VK_SUCCESS) {
+                        VkCommandBufferBeginInfo bi = {
+                            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+                        };
+                        VkResult br = vkBeginCommandBuffer(cb, &bi);
+                        if (br == VK_SUCCESS) br = vkEndCommandBuffer(cb);
+                        printf("gpu[%u].vkRecordCommandBuffer=%d\n", i, br);
+                        if (br == VK_SUCCESS && queue != VK_NULL_HANDLE) {
+                            VkSubmitInfo si = {
+                                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                                .commandBufferCount = 1,
+                                .pCommandBuffers = &cb
+                            };
+                            VkResult sr = vkQueueSubmit(queue, 1, &si, VK_NULL_HANDLE);
+                            printf("gpu[%u].vkQueueSubmit=%d\n", i, sr);
+                            if (sr == VK_SUCCESS) {
+                                VkResult wr = vkQueueWaitIdle(queue);
+                                printf("gpu[%u].vkQueueWaitIdle=%d\n", i, wr);
+                            }
+                        }
+                    }
+                    vkDestroyCommandPool(device, pool, NULL);
+                }
                 VkResult idle = vkDeviceWaitIdle(device);
                 printf("gpu[%u].vkDeviceWaitIdle=%d\n", i, idle);
                 vkDestroyDevice(device, NULL);
