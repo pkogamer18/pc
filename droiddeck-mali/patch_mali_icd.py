@@ -82,6 +82,36 @@ MALI_INSTALL_REPLACEMENT = '''        // UMS9632: provision Arch Linux ARM softw
                 it.name.endsWith(".json") && (it.name.startsWith("lvp_icd") || it.name.contains("lavapipe"))
             } == true
             if (!hasIcd) {
+                // Install the prebuilt Arch ARM64 bundle from the APK; no network or pacman.
+                val archive = File(cacheDir, "mali-lavapipe-arm64.tar")
+                try {
+                    assets.open("mali/lavapipe-arm64.tar").use { input ->
+                        archive.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    val extraction = ProcessBuilder(
+                        "/system/bin/toybox", "tar", "-xf", archive.absolutePath,
+                        "-C", root.absolutePath
+                    ).redirectErrorStream(true)
+                        .redirectOutput(File(filesDir, "mali-lavapipe-extract.log"))
+                        .start()
+                    val extracted = extraction.waitFor(120, java.util.concurrent.TimeUnit.SECONDS)
+                    if (!extracted) extraction.destroyForcibly()
+                    val ready = extracted && extraction.exitValue() == 0 &&
+                        icdDir.listFiles()?.any { it.name.startsWith("lvp_icd") && it.name.endsWith(".json") } == true
+                    if (!ready) {
+                        Log.e(TAG, "Mali: bundled Lavapipe extraction failed")
+                        stopSession(72)
+                        return
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Mali: bundled Lavapipe missing or invalid", e)
+                    stopSession(72)
+                    return
+                } finally {
+                    archive.delete()
+                }
+            }
+            if (false) {
                 val installLog = File(filesDir, "logs/mali-lavapipe-install.log")
                 installLog.parentFile?.mkdirs()
                 try {
