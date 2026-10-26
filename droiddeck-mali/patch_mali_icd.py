@@ -207,6 +207,10 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   fi
   export VK_ICD_FILENAMES="$bl_lvp_icd" VK_DRIVER_FILES="$bl_lvp_icd"
   export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+  # Steam compatibility wrappers may invoke droiddeck-gpu even from the desktop.
+  # That GPU path is not supported by this Mali software session; keep WineD3D
+  # and FEX games on the already-working desktop compositor instead.
+  export BL_DESKTOP_GPU=off PROTON_USE_WINED3D=1
   # Gamescope 3.16 aborts on this Mali software ICD during vkAllocateMemory.
   # Do not try it again for the Steam entry point: use the proven desktop
   # compositor instead, where Steam already opens on this handset.
