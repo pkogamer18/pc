@@ -45,35 +45,6 @@ NEW_HOST_COMPOSITOR = '''        // Z2464N has a working Android vendor Vulkan I
             nativeLibDir,
         )'''
 BOOTSTRAP_ANCHOR = '''        val root = LinuxRuntime.rootDir(this)
-        // One-time unprivileged install: PRoot -0 fakes guest root, not Android root.
-        if (maliGuest) {
-            val icdDir = File(root, "usr/share/vulkan/icd.d")
-            val installed = icdDir.listFiles()?.any {
-                it.name.startsWith("lvp_icd") || it.name.contains("lavapipe")
-            } == true
-            if (!installed) {
-                val marker = File(root, "var/lib/droiddeck-mali-lvp-attempted")
-                if (!marker.isFile) {
-                    marker.parentFile?.mkdirs()
-                    marker.writeText("attempted")
-                    try {
-                        val command = LinuxRuntime.prootPrefix(this, root, "/", true).toMutableList()
-                        command.addAll(listOf("/bin/sh", "-c",
-                            "pacman -Sy --noconfirm --needed vulkan-swrast"))
-                        val process = ProcessBuilder(command)
-                            .redirectErrorStream(true)
-                            .redirectOutput(File(filesDir, "mali-lavapipe-install.log"))
-                            .start()
-                        val finished = process.waitFor(150, java.util.concurrent.TimeUnit.SECONDS)
-                        if (!finished) process.destroyForcibly()
-                        Log.i(TAG, "Mali guest: rootless Lavapipe install finished=$finished exit=" +
-                            (if (finished) process.exitValue() else "timeout"))
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Mali guest: rootless Lavapipe install failed", e)
-                    }
-                }
-            }
-        }
         val sessionRoot = LinuxRuntime.sessionRoot(this).apply { mkdirs() }'''
 BOOTSTRAP_REPLACEMENT = '''        val root = LinuxRuntime.rootDir(this)
         // r9 is downloaded independently of the APK. Update its session script in-place
