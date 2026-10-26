@@ -188,6 +188,12 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   fi
   export VK_ICD_FILENAMES="$bl_lvp_icd" VK_DRIVER_FILES="$bl_lvp_icd"
   export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+  # Experimental lower-memory profile for Lavapipe, not hardware acceleration.
+  export LP_NUM_THREADS=2 BL_MANGOAPP=0 BL_XWAYLAND_COUNT=1 BL_HDR=0
+  if [ "${BL_WIDTH:-1280}" -gt 960 ] || [ "${BL_HEIGHT:-720}" -gt 540 ]; then
+    export BL_WIDTH=960 BL_HEIGHT=540 BL_FOLLOW_OUTPUT=0 BL_GAMESCOPE_STRETCH_16X9=0
+  fi
+  echo "== mali-lavapipe: low-memory trial size=${BL_WIDTH:-960}x${BL_HEIGHT:-540} threads=$LP_NUM_THREADS mangoapp=off xwayland=1"
   echo "== mali-lavapipe: selected $bl_lvp_icd ($bl_lvp_resolved)"
   unset bl_lvp_icd bl_lvp_lib bl_lvp_resolved bl_dir bl_candidate
 fi
