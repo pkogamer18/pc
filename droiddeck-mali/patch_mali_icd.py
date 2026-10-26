@@ -188,6 +188,13 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   fi
   export VK_ICD_FILENAMES="$bl_lvp_icd" VK_DRIVER_FILES="$bl_lvp_icd"
   export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+  # Gamescope 3.16 aborts on this Mali software ICD during vkAllocateMemory.
+  # Do not try it again for the Steam entry point: use the proven desktop
+  # compositor instead, where Steam already opens on this handset.
+  if [ "${1:-}" = steam ] && [ -z "${BL_INSIDE:-}" ]; then
+    echo "== mali-lavapipe: bypassing crashing Gamescope; opening Linux desktop for Steam"
+    set -- lxqt "${@:2}"
+  fi
   # Experimental lower-memory profile for Lavapipe, not hardware acceleration.
   export LP_NUM_THREADS=2 BL_MANGOAPP=0 BL_XWAYLAND_COUNT=1 BL_HDR=0
   if [ "${BL_WIDTH:-1280}" -gt 960 ] || [ "${BL_HEIGHT:-720}" -gt 540 ]; then
