@@ -21,7 +21,7 @@ jobs:
           set -euo pipefail
           python3 droiddeck-mali/patch_mali_icd.py upstream
           git -C upstream diff --check
-          sh -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           python3 droiddeck-mali/patch_mali_icd.py upstream
           git -C upstream diff --check
           grep -q 'Mali host: Android system Vulkan loader' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
