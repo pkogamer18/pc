@@ -37,6 +37,9 @@ jobs:
           python3 droiddeck-mali/patch_mali_icd.py upstream
           bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           grep -q 'mali-lavapipe: selected' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          grep -q 'Mali host: Android system Vulkan loader' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
+          grep -q 'if (maliHost) null else driverPath' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
+          grep -q 'DROIDDECK_MALI_LVP=1' upstream/app/src/main/java/com/droiddeck/launcher/session/SessionService.kt
           git -C upstream diff --check
       - uses: actions/download-artifact@v4
         with:
