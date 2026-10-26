@@ -1,0 +1,24 @@
+name: Mali-G57 patched source bundle
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  patched-source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare patched upstream source
+        run: bash droiddeck-mali/build_source_bundle.sh "$RUNNER_TEMP/mali-experiment"
+      - name: Check experiment tests
+        run: python3 -m unittest discover -s droiddeck-mali -p 'test_*.py' -v
+      - name: Package source diff and reproducibility metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: mali-g57-patched-source-not-apk
+          path: |
+            ${{ runner.temp }}/mali-experiment/mali-g57.patch
+            ${{ runner.temp }}/mali-experiment/upstream-sha.txt
+            ${{ runner.temp }}/mali-experiment/STATUS.md
+          if-no-files-found: error
+          retention-days: 14

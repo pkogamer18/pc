@@ -1,0 +1,16 @@
+{
+  "device": "nubia Z2464N",
+  "android": 15,
+  "api": 35,
+  "soc": "UMS9632",
+  "gpu": "Mali-G57",
+  "gpu_driver": "r49p1",
+  "vulkan": "1.3.278",
+  "abi": "arm64-v8a",
+  "vulkan_vendor_id": "0x13b5",
+  "bc_textures": false,
+  "ext_robustness2": false,
+  "droiddeck_display_driver": "turnip25.1.0",
+  "droiddeck_runtime_driver": "Turnip",
+  "status": "unsupported upstream"
+}

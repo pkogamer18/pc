@@ -1,0 +1,132 @@
+name: Mali experimental APK build attempt
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: mali-experimental-manual
+  cancel-in-progress: true
+jobs:
+  lavapipe:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Arch Linux ARM64 Lavapipe bundle
+        run: |
+          mkdir -p output
+          bash droiddeck-mali/build_lavapipe_arm64.sh "$PWD/output/lavapipe-arm64.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mali-lavapipe-arm64
+          path: output/lavapipe-arm64.tar
+          if-no-files-found: error
+  xbox:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get upstream
+        run: git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
+      - name: Build Xbox ARM64
+        working-directory: upstream
+        run: python3 tools/components/prepare.py xbox
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mali-xbox-arm64
+          path: upstream/app/src/main/assets/linuxfs/usr/local/lib/droiddeck-xbox
+          if-no-files-found: error
+  build:
+    needs: [xbox, lavapipe]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Validate Mali patch before expensive build
+        run: python3 droiddeck-mali/test_offline.py
+      - name: Clone and patch upstream
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
+          python3 droiddeck-mali/patch_mali_icd.py upstream
+          mkdir -p upstream/app/src/main/assets/mali
+          cp upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session upstream/app/src/main/assets/mali/droiddeck-session
+          cmp upstream/app/src/main/assets/mali/droiddeck-session upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          grep -q 'mali-lavapipe: selected' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          grep -q 'Mali host: Android system Vulkan loader' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
+          grep -q 'if (maliHost) null else driverPath' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
+          grep -q 'DROIDDECK_MALI_LVP=1' upstream/app/src/main/java/com/droiddeck/launcher/session/SessionService.kt
+          grep -q 'Mali Lavapipe provision completed=' upstream/app/src/main/java/com/droiddeck/launcher/session/SessionService.kt
+          grep -q 'pacman -Sy --noconfirm --needed vulkan-swrast' upstream/app/src/main/java/com/droiddeck/launcher/session/SessionService.kt
+          git -C upstream diff --check
+      - uses: actions/download-artifact@v4
+        with:
+          name: mali-xbox-arm64
+          path: upstream/app/src/main/assets/linuxfs/usr/local/lib/droiddeck-xbox
+      - uses: actions/download-artifact@v4
+        with:
+          name: mali-lavapipe-arm64
+          path: upstream/app/src/main/assets/mali
+      - name: Verify bundled ARM64 Lavapipe
+        run: |
+          test -s upstream/app/src/main/assets/mali/lavapipe-arm64.tar
+          tar -tf upstream/app/src/main/assets/mali/lavapipe-arm64.tar | grep -q 'lvp_icd.*json'
+      - name: Prepare Android toolchain
+        working-directory: upstream
+        run: bash tools/ci/resolve-ndk.sh
+      - name: Prepare all upstream components in dependency order
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          python3 tools/components/prepare.py tools
+          python3 tools/components/prepare.py arm64-preloads
+          python3 tools/components/prepare.py runtime
+          GITHUB_REPOSITORY=Droid-Deck/DroidDeck GH_TOKEN="${{ github.token }}" python3 tools/components/prepare.py debian-image
+          python3 tools/components/prepare.py x86-preloads
+          python3 tools/components/prepare.py esync
+          python3 tools/components/prepare.py pulseaudio-source
+          python3 tools/components/prepare.py directaudio
+          python3 tools/components/prepare.py audio
+          python3 tools/components/prepare.py proot
+          python3 tools/components/prepare.py comet
+          bash tools/linuxfs/check-preloads.sh app/src/main/assets/linuxfs
+          python3 tools/quest/build-driver.py "$ANDROID_HOME/ndk/$NDK_VERSION"
+          python3 tools/components/prepare.py pack
+      - name: Build verified add-on packs
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          command -v zstd || sudo apt-get install -y zstd
+          bash tools/packs/build.sh app/build/packs
+      - name: Record verified runtime inputs
+        working-directory: upstream
+        run: python3 tools/release/runtime_inputs.py record
+      - name: Install Android Rust cross-compilation support
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          rustup target add aarch64-linux-android
+          command -v cargo-ndk >/dev/null || cargo install cargo-ndk --locked
+          cargo ndk --version
+      - name: Build experimental APK
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          ./gradlew assembleDebug --console=plain -PndkVersion="$NDK_VERSION"
+          test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload diagnostics and APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mali-build-output
+          path: |
+            upstream/app/build/outputs/apk/debug/*.apk
+            upstream/app/build/reports/**
+          if-no-files-found: warn
+          retention-days: 14
