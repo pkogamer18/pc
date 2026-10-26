@@ -193,7 +193,7 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   # compositor instead, where Steam already opens on this handset.
   if [ "${1:-}" = steam ] && [ -z "${BL_INSIDE:-}" ]; then
     echo "== mali-lavapipe: bypassing crashing Gamescope; opening Linux desktop for Steam"
-    set -- lxqt "${@:2}"
+    mode=lxqt
   fi
   # Experimental lower-memory profile for Lavapipe, not hardware acceleration.
   export LP_NUM_THREADS=2 BL_MANGOAPP=0 BL_XWAYLAND_COUNT=1 BL_HDR=0
