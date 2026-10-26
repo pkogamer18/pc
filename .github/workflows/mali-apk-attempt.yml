@@ -35,6 +35,9 @@ jobs:
           set -euo pipefail
           git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
           python3 droiddeck-mali/patch_mali_icd.py upstream
+          mkdir -p upstream/app/src/main/assets/mali
+          cp upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session upstream/app/src/main/assets/mali/droiddeck-session
+          cmp upstream/app/src/main/assets/mali/droiddeck-session upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           grep -q 'mali-lavapipe: selected' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           grep -q 'Mali host: Android system Vulkan loader' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
