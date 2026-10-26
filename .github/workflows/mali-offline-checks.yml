@@ -14,3 +14,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate patch and shell without Android build
         run: python3 droiddeck-mali/test_offline.py
+      - name: Fetch upstream sources for patch integration
+        run: git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
+      - name: Apply every patch to real upstream and verify idempotence
+        run: |
+          set -euo pipefail
+          python3 droiddeck-mali/patch_mali_icd.py upstream
+          git -C upstream diff --check
+          sh -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
+          python3 droiddeck-mali/patch_mali_icd.py upstream
+          git -C upstream diff --check
+          grep -q 'Mali host: Android system Vulkan loader' upstream/app/src/main/java/com/droiddeck/launcher/wayland/CompositorHost.kt
+          grep -q 'mali-lavapipe: FATAL no ARM64 Lavapipe ICD installed' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
