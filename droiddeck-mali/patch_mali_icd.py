@@ -50,8 +50,9 @@ OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME
 NEW_GUEST_HOOK = '''# Experimental Mali path: prepare/validate the Linux ARM64 software Vulkan ICD.
 if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   # Inline bootstrap: the downloaded r9 rootfs does not contain APK-only helper files.
+  echo "== droiddeck-mali: guest-patch=v2; mode=software-vulkan"
   bl_lvp_icd=
-  for bl_candidate in /usr/share/vulkan/icd.d/lvp_icd.aarch64.json /usr/share/vulkan/icd.d/lvp_icd.arm64.json /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/*lavapipe*.json; do
+  for bl_candidate in /usr/share/vulkan/icd.d/lvp_icd.aarch64.json /usr/share/vulkan/icd.d/lvp_icd.arm64.json /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/*lavapipe*.json /etc/vulkan/icd.d/lvp_icd*.json /etc/vulkan/icd.d/*lavapipe*.json; do
     if [ -r "$bl_candidate" ]; then bl_lvp_icd="$bl_candidate"; break; fi
   done
   if [ -z "$bl_lvp_icd" ]; then
