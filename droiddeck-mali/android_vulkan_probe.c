@@ -81,6 +81,42 @@ int main(void) {
         for (uint32_t q = 0; q < qn; ++q)
             printf("gpu[%u].queue[%u].flags=0x%x count=%u\n", i, q, qs[q].queueFlags, qs[q].queueCount);
         print_exts(devices[i]);
+        /* Confirm that the vendor ICD can create a usable hardware Vulkan device,
+         * not just enumerate physical devices. No window or root required. */
+        int graphics_family = -1;
+        for (uint32_t q = 0; q < qn; ++q) {
+            if (qs[q].queueCount && (qs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+                graphics_family = (int)q;
+                break;
+            }
+        }
+        printf("gpu[%u].graphics_queue_family=%d\n", i, graphics_family);
+        if (graphics_family >= 0) {
+            const float priority = 1.0f;
+            VkDeviceQueueCreateInfo qi = {
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .queueFamilyIndex = (uint32_t)graphics_family,
+                .queueCount = 1,
+                .pQueuePriorities = &priority
+            };
+            VkDeviceCreateInfo di = {
+                .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                .queueCreateInfoCount = 1,
+                .pQueueCreateInfos = &qi
+            };
+            VkDevice device = VK_NULL_HANDLE;
+            VkResult dr = vkCreateDevice(devices[i], &di, NULL, &device);
+            printf("gpu[%u].vkCreateDevice=%d\n", i, dr);
+            if (dr == VK_SUCCESS) {
+                VkQueue queue = VK_NULL_HANDLE;
+                vkGetDeviceQueue(device, (uint32_t)graphics_family, 0, &queue);
+                printf("gpu[%u].graphics_queue_available=%s\n", i, queue != VK_NULL_HANDLE ? "yes" : "no");
+                VkResult idle = vkDeviceWaitIdle(device);
+                printf("gpu[%u].vkDeviceWaitIdle=%d\n", i, idle);
+                vkDestroyDevice(device, NULL);
+            }
+        }
+
     }
     vkDestroyInstance(instance, NULL);
     return 0;
