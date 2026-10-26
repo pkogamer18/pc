@@ -27,6 +27,10 @@ sudo cat "$work/root/etc/resolv.conf"
 echo 'Arch mirror:'
 sudo cat "$work/root/etc/pacman.d/mirrorlist"
 for d in dev proc sys; do sudo mount --bind "/$d" "$work/root/$d"; done
+# Pacman's CheckSpace cannot resolve mount points inside this GitHub runner chroot.
+# Disable that check only here; verify available host disk space explicitly.
+df -h "$work"
+sudo sed -i 's/^[[:space:]]*CheckSpace[[:space:]]*$/#CheckSpace/' "$work/root/etc/pacman.conf"
 # Use the package manager inside an actual Arch Linux ARM environment.
 sudo chroot "$work/root" /bin/bash -lc 'pacman-key --init && pacman-key --populate archlinuxarm && pacman -Syu --noconfirm --needed vulkan-swrast vulkan-tools'
 sudo test -n "$(sudo find "$work/root/usr/share/vulkan/icd.d" -name 'lvp_icd*.json' -print -quit)"
