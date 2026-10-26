@@ -1,17 +1,12 @@
 name: Mali experimental APK build attempt
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/droiddeck-mali-g57-research
-    paths:
-      - '.github/workflows/mali-apk-attempt.yml'
-      - 'droiddeck-mali/patch_mali_icd.py'
-      - 'droiddeck-mali/test_offline.py'
-      - 'droiddeck-mali/build_lavapipe_arm64.sh'
 permissions:
   contents: read
   actions: read
+concurrency:
+  group: mali-experimental-manual
+  cancel-in-progress: true
 jobs:
   lavapipe:
     runs-on: ubuntu-24.04-arm
