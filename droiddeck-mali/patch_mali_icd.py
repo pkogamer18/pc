@@ -151,7 +151,26 @@ OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME
 NEW_GUEST_HOOK = '''# Experimental Mali path: prepare/validate the Linux ARM64 software Vulkan ICD.
 if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   # Inline bootstrap: the downloaded r9 rootfs does not contain APK-only helper files.
-  echo "== droiddeck-mali: guest-patch=v2; mode=software-vulkan"
+  echo "== droiddeck-mali: guest-patch=v3; mode=software-vulkan"
+  # Collect non-root GPU access evidence in the existing session log.
+  # Read-only checks; no kernel or driver modifications.
+  for bl_gpu_node in /dev/mali /dev/mali0 /dev/mali_kbase /dev/dri/renderD128; do
+    if [ -e "$bl_gpu_node" ]; then
+      if [ -r "$bl_gpu_node" ] && [ -w "$bl_gpu_node" ]; then
+        echo "== mali-device: $bl_gpu_node accessible"
+      else
+        echo "== mali-device: $bl_gpu_node permission-limited"
+      fi
+    else
+      echo "== mali-device: $bl_gpu_node absent"
+    fi
+  done
+  if command -v droiddeck-fex >/dev/null 2>&1; then
+    echo "== mali-fex: launcher present"
+  else
+    echo "== mali-fex: launcher missing"
+  fi
+  unset bl_gpu_node
   bl_lvp_icd=
   for bl_candidate in /usr/share/vulkan/icd.d/lvp_icd.aarch64.json /usr/share/vulkan/icd.d/lvp_icd.arm64.json /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/*lavapipe*.json /etc/vulkan/icd.d/lvp_icd*.json /etc/vulkan/icd.d/*lavapipe*.json; do
     if [ -r "$bl_candidate" ]; then bl_lvp_icd="$bl_candidate"; break; fi
