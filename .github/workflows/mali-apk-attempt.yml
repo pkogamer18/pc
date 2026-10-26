@@ -2,7 +2,7 @@ name: Mali experimental APK build attempt
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, mali-g57-compat-experimental]
     paths:
       - '.github/workflows/mali-apk-attempt.yml'
       - 'droiddeck-mali/**'
@@ -53,7 +53,10 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Validate Mali patch before expensive build
-        run: python3 droiddeck-mali/test_offline.py
+        run: |
+          python3 droiddeck-mali/test_offline.py
+          bash -n droiddeck-mali/compat_report.sh
+          sh -n droiddeck-mali/probe_mali_access.sh
       - name: Clone and patch upstream
         run: |
           set -euo pipefail
