@@ -98,8 +98,17 @@ MALI_INSTALL_REPLACEMENT = '''        // UMS9632: provision Arch Linux ARM softw
                     val process = builder.start()
                     val completed = process.waitFor(180, java.util.concurrent.TimeUnit.SECONDS)
                     if (!completed) process.destroyForcibly()
+                    val exitCode = if (completed) process.exitValue() else -1
+                    val installed = icdDir.listFiles()?.any {
+                        it.name.endsWith(".json") && (it.name.startsWith("lvp_icd") || it.name.contains("lavapipe"))
+                    } == true
                     Log.i(TAG, "Mali Lavapipe provision completed=" + completed +
-                        " exit=" + (if (completed) process.exitValue() else "timeout"))
+                        " exit=" + exitCode + " icd=" + installed)
+                    if (exitCode != 0 || !installed) {
+                        Log.e(TAG, "Mali Lavapipe unavailable; pacman output: " + installLog.absolutePath)
+                        stopSession(72)
+                        return
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Mali Lavapipe provision failed; inspect mali-lavapipe-install.log", e)
                 }
