@@ -191,7 +191,7 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   # Gamescope 3.16 aborts on this Mali software ICD during vkAllocateMemory.
   # Do not try it again for the Steam entry point: use the proven desktop
   # compositor instead, where Steam already opens on this handset.
-  if [ "${1:-}" = steam ] && [ -z "${BL_INSIDE:-}" ]; then
+  if [ "$mode" = steam ] && [ -z "${BL_INSIDE:-}" ]; then
     echo "== mali-lavapipe: bypassing crashing Gamescope; opening Linux desktop for Steam"
     mode=lxqt
   fi
