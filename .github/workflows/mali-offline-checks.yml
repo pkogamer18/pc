@@ -20,6 +20,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 droiddeck-mali/patch_mali_icd.py upstream
+          grep -q 'updated r9 session script from APK asset' upstream/app/src/main/java/com/droiddeck/launcher/session/SessionService.kt
           git -C upstream diff --check
           bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           python3 droiddeck-mali/patch_mali_icd.py upstream
