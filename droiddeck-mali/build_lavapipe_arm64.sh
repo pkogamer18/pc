@@ -12,6 +12,7 @@ mkdir -p "$work/root"
 sudo tar -xzf "$work/arch.tar.gz" -C "$work/root"
 # GitHub Ubuntu uses a systemd-resolved loopback stub that is not available in chroot.
 # Use the runner's real upstream resolver configuration, not 127.0.0.53.
+sudo rm -f "$work/root/etc/resolv.conf"
 if [ -s /run/systemd/resolve/resolv.conf ]; then
   sudo cp /run/systemd/resolve/resolv.conf "$work/root/etc/resolv.conf"
 else
