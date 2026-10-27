@@ -65,7 +65,20 @@ BOOTSTRAP_REPLACEMENT = '''        val root = LinuxRuntime.rootDir(this)
                     staging.delete()
                     error("cannot replace r9 guest session script")
                 }
-                Log.i(TAG, "Mali guest: updated r9 session script from APK asset")
+                // Also update Steam's compatibility-tool generator in the existing rootfs.
+                // Steam regenerates the Proton wrappers from this script.
+                val compatScript = File(root, "usr/local/bin/steam-compatibility")
+                require(compatScript.isFile) { "r9 Steam compatibility script missing" }
+                val compatStage = File(compatScript.parentFile, ".steam-compatibility-mali-new")
+                assets.open("mali/steam-compatibility").use { input ->
+                    compatStage.outputStream().use { output -> input.copyTo(output) }
+                }
+                require(compatStage.setExecutable(true, false)) { "cannot mark compatibility script executable" }
+                if (!compatStage.renameTo(compatScript)) {
+                    compatStage.delete()
+                    error("cannot replace r9 compatibility script")
+                }
+                Log.i(TAG, "Mali guest: updated r9 session and Steam compatibility scripts")
             } catch (e: Exception) {
                 Log.e(TAG, "Mali guest: failed to update r9 session script", e)
                 stopSession(72)
