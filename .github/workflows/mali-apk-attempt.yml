@@ -68,14 +68,14 @@ jobs:
           p = Path('upstream/app/build.gradle')
           s = p.read_text()
           old = '        versionCode 15\n        versionName "0.6.0"'
-          new = '        versionCode 16\n        versionName "0.6.1-mali"'
+          new = '        versionCode 17\n        versionName "0.6.2-mali"'
           if s.count(old) != 1:
               raise SystemExit('Unexpected upstream version: refusing unsafe upgrade')
           s = s.replace(old, new)
           assert 'applicationId "com.droiddeck.launcher"' in s
           assert 'signingConfig signingConfigs.testkey' in s
           p.write_text(s)
-          print('Same package and signing key, versionCode 16')
+          print('Same package and signing key, versionCode 17')
           PY
           mkdir -p upstream/app/src/main/assets/mali
           cp upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session upstream/app/src/main/assets/mali/droiddeck-session
