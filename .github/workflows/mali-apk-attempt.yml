@@ -64,6 +64,9 @@ jobs:
           python3 droiddeck-mali/patch_mali_icd.py upstream
           mkdir -p upstream/app/src/main/assets/mali
           cp upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session upstream/app/src/main/assets/mali/droiddeck-session
+          cp upstream/tools/linuxfs/overlay/usr/local/bin/steam-compatibility upstream/app/src/main/assets/mali/steam-compatibility
+          python3 -m py_compile upstream/tools/linuxfs/overlay/usr/local/bin/steam-compatibility
+          grep -q "Half-Life 640x480 WineD3D" upstream/app/src/main/assets/mali/steam-compatibility
           cmp upstream/app/src/main/assets/mali/droiddeck-session upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           bash -n upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
           grep -q 'mali-lavapipe: selected' upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session
