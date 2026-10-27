@@ -10,8 +10,8 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: mali-experimental-manual
-  cancel-in-progress: true
+  group: mali-experimental-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   lavapipe:
     runs-on: ubuntu-24.04-arm
