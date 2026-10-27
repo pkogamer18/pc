@@ -62,13 +62,22 @@ jobs:
           set -euo pipefail
           git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
           python3 droiddeck-mali/patch_mali_icd.py upstream
-          # Keep the existing package ID and testkey signer; raise version for in-place upgrade.
+          # Keep the package ID and testkey signer, raise version for in-place upgrade.
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          gradle = Path('upstream/app/build.gradle')
-          source = gradle.read_text()
-          source, count = re.subn(r'(?m)^(\s*)versionCode\s+15\s*          mkdir -p upstream/app/src/main/assets/mali
+          p = Path('upstream/app/build.gradle')
+          s = p.read_text()
+          old = '        versionCode 15\n        versionName "0.6.0"'
+          new = '        versionCode 16\n        versionName "0.6.1-mali"'
+          if s.count(old) != 1:
+              raise SystemExit('Unexpected upstream version: refusing unsafe upgrade')
+          s = s.replace(old, new)
+          assert 'applicationId "com.droiddeck.launcher"' in s
+          assert 'signingConfig signingConfigs.testkey' in s
+          p.write_text(s)
+          print('Same package and signing key, versionCode 16')
+          PY
+          mkdir -p upstream/app/src/main/assets/mali
           cp upstream/tools/linuxfs/overlay/usr/local/bin/droiddeck-session upstream/app/src/main/assets/mali/droiddeck-session
           cp upstream/tools/linuxfs/overlay/usr/local/bin/steam-compatibility upstream/app/src/main/assets/mali/steam-compatibility
           python3 -m py_compile upstream/tools/linuxfs/overlay/usr/local/bin/steam-compatibility
