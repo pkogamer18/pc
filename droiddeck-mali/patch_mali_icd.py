@@ -145,6 +145,17 @@ MALI_INSTALL_REPLACEMENT = '''        // UMS9632: provision Arch Linux ARM softw
             }
         }
         val agentEnvironment = runCatching { com.droiddeck.launcher.agent.AgentEnv.beginSession(this) }'''
+STEAM_COMPAT = "tools/linuxfs/overlay/usr/local/bin/steam-compatibility"
+OLD_STEAM_COMPAT = '''  bl_idtech3 "$@"
+  bl_vacdiag "$@"'''
+NEW_STEAM_COMPAT = '''  bl_idtech3 "$@"
+  # Only Half-Life 1 on the Mali software desktop. Keep other Steam titles unchanged.
+  if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ] && [ "${SteamAppId:-${STEAM_COMPAT_APP_ID:-}}" = 70 ]; then
+    export BL_DESKTOP_GPU=off PROTON_USE_WINED3D=1 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4
+    BL_EXTRA_ARGS+=(-game valve -windowed -w 640 -h 480 -gl)
+    echo "droiddeck-mali: Half-Life 640x480 WineD3D software profile" >&2
+  fi
+  bl_vacdiag "$@"'''
 FRONTEND = "app/src/main/java/com/droiddeck/launcher/FrontEndActivity.kt"
 GUEST_SESSION = "tools/linuxfs/overlay/usr/local/bin/droiddeck-session"
 OLD_GUEST_HOOK = 'export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}'
@@ -272,7 +283,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("upstream", type=Path)
     root = ap.parse_args().upstream
-    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (SESSION, BOOTSTRAP_ANCHOR, BOOTSTRAP_REPLACEMENT), (SESSION, MALI_INSTALL_ANCHOR, MALI_INSTALL_REPLACEMENT), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK), (HOST_COMPOSITOR, OLD_HOST_COMPOSITOR, NEW_HOST_COMPOSITOR)]
+    pairs = [(RUNTIME, OLD_ICD, NEW_ICD), (SESSION, OLD_SESSION, NEW_SESSION), (SESSION, BOOTSTRAP_ANCHOR, BOOTSTRAP_REPLACEMENT), (SESSION, MALI_INSTALL_ANCHOR, MALI_INSTALL_REPLACEMENT), (FRONTEND, OLD_WARNING, NEW_WARNING), (GUEST_SESSION, OLD_GUEST_HOOK, NEW_GUEST_HOOK), (HOST_COMPOSITOR, OLD_HOST_COMPOSITOR, NEW_HOST_COMPOSITOR), (STEAM_COMPAT, OLD_STEAM_COMPAT, NEW_STEAM_COMPAT)]
     for name, old, new in pairs:
         src = (root / name).read_text()
         if new not in src and src.count(old) != 1:
