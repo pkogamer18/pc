@@ -147,6 +147,13 @@ jobs:
           set -euo pipefail
           ./gradlew assembleDebug --console=plain -PndkVersion="$NDK_VERSION"
           test -s app/build/outputs/apk/debug/app-debug.apk
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          BUILD_TOOLS="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt" dump badging "$APK" | tee apk-badging.txt
+          grep -q "name='com.droiddeck.launcher' versionCode='17'" apk-badging.txt
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee apk-signature.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" apk-signature.txt
+          echo "Verified Mali update APK package, versionCode 17 and signature"
       - name: Upload diagnostics and APK
         if: always()
         uses: actions/upload-artifact@v4
@@ -155,6 +162,8 @@ jobs:
           path: |
             upstream/app/build/outputs/apk/debug/*.apk
             upstream/app/build/reports/**
+            upstream/apk-badging.txt
+            upstream/apk-signature.txt
           if-no-files-found: warn
           retention-days: 14
 , r'\g<1>versionCode 16', source)
