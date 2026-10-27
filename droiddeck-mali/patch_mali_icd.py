@@ -244,9 +244,19 @@ if [ "${DROIDDECK_MALI_LVP:-0}" = 1 ]; then
   fi
   # Experimental lower-memory profile for Lavapipe, not hardware acceleration.
   export LP_NUM_THREADS=2 BL_MANGOAPP=0 BL_XWAYLAND_COUNT=1 BL_HDR=0
-  if [ "${BL_WIDTH:-1280}" -gt 960 ] || [ "${BL_HEIGHT:-720}" -gt 540 ]; then
+  # Global optional display mode for all games; safe default is unchanged.
+  # To opt in, put 'scaled' in /root/.config/droiddeck/mali-display-mode.
+  bl_mali_display_mode=performance
+  if [ -r /root/.config/droiddeck/mali-display-mode ]; then
+    IFS= read -r bl_mali_display_mode < /root/.config/droiddeck/mali-display-mode || true
+  fi
+  if [ "$bl_mali_display_mode" = scaled ]; then
+    export BL_WIDTH=640 BL_HEIGHT=480 BL_FOLLOW_OUTPUT=0 BL_GAMESCOPE_STRETCH_16X9=0
+    echo "== mali-display: 640x480 desktop scaling experiment (all games)"
+  elif [ "${BL_WIDTH:-1280}" -gt 960 ] || [ "${BL_HEIGHT:-720}" -gt 540 ]; then
     export BL_WIDTH=960 BL_HEIGHT=540 BL_FOLLOW_OUTPUT=0 BL_GAMESCOPE_STRETCH_16X9=0
   fi
+  unset bl_mali_display_mode
   echo "== mali-lavapipe: low-memory trial size=${BL_WIDTH:-960}x${BL_HEIGHT:-540} threads=$LP_NUM_THREADS mangoapp=off xwayland=1"
   echo "== mali-lavapipe: selected $bl_lvp_icd ($bl_lvp_resolved)"
   unset bl_lvp_icd bl_lvp_lib bl_lvp_resolved bl_dir bl_candidate
