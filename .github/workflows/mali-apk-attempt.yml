@@ -62,6 +62,19 @@ jobs:
           set -euo pipefail
           git clone --depth 1 https://github.com/Droid-Deck/DroidDeck.git upstream
           python3 droiddeck-mali/patch_mali_icd.py upstream
+          # Experimental minimal Android permission surface for the Mali Steam build.
+          # Keep the main manifest untouched; debug manifest merger removes only
+          # optional Android package installation and accessibility integration.
+          mkdir -p upstream/app/src/debug
+          cat > upstream/app/src/debug/AndroidManifest.xml <<'XML'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:tools="http://schemas.android.com/tools">
+              <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+              <application>
+                  <service android:name=".input.HomeButtonService" tools:node="remove" />
+              </application>
+          </manifest>
+          XML
           # Keep the package ID and testkey signer, raise version for in-place upgrade.
           python3 - <<'PY'
           from pathlib import Path
@@ -150,6 +163,14 @@ jobs:
           APK=app/build/outputs/apk/debug/app-debug.apk
           BUILD_TOOLS="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt" dump badging "$APK" | tee apk-badging.txt
+          # Assert the sensitive optional capabilities were actually removed.
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml > apk-manifest-tree.txt
+          if grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' apk-manifest-tree.txt; then
+            echo 'Unexpected package-install permission in APK' >&2; exit 1
+          fi
+          if grep -q 'HomeButtonService' apk-manifest-tree.txt; then
+            echo 'Unexpected accessibility service in APK' >&2; exit 1
+          fi
           grep -q "name='com.droiddeck.launcher' versionCode='17'" apk-badging.txt
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee apk-signature.txt
           grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" apk-signature.txt
@@ -164,5 +185,6 @@ jobs:
             upstream/app/build/reports/**
             upstream/apk-badging.txt
             upstream/apk-signature.txt
+            upstream/apk-manifest-tree.txt
           if-no-files-found: warn
           retention-days: 14
